@@ -61,10 +61,10 @@ Open-source alternatives like Ultravox (8–70B), Qwen2-Audio (7B), and LFM2-Aud
                                  │
                         ┌────────▼────────────┐
                         │  MLP Projector       │
-                        │  768 → 512 (GELU)    │
-                        │  512 → 512           │
+                        │  768 → 1024 (GELU)   │
+                        │  1024 → 1024         │
                         └────────┬────────────┘
-                                 │ (batch, 375, 512)
+                                 │ (batch, 375, 1024)
                                  │
               ┌──────────────────┼──────────────────┐
               │                  │                   │
@@ -105,8 +105,8 @@ Open-source alternatives like Ultravox (8–70B), Qwen2-Audio (7B), and LFM2-Aud
 - 4x compression keeps the audio prefix manageable for the LLM's context window
 - LayerNorm stabilizes the compressed representations before projection
 
-**Audio Projector (785K params)**
-- 2-layer MLP bridging Whisper's 768-dim space to Qwen3's 512-dim embedding space
+**Audio Projector (1.6M params)**
+- 2-layer MLP bridging Whisper's 768-dim space to Qwen3's 1024-dim embedding space
 - GELU activation between layers
 - The audio embeddings are injected directly into the LLM's input embedding sequence, allowing the language model to attend to audio features as if they were token embeddings
 
@@ -185,6 +185,40 @@ All three groups use AdamW-8bit with cosine LR scheduling and 100 warmup steps.
 | **Our Model** | **End-to-end** | **Whisper-small (39M)** | **77.1%** |
 
 Our model matches or exceeds these baselines while using a **7.7x smaller encoder** (39M vs 300M parameters).
+
+## On-Device Deployment (MLX)
+
+The model was trained with bitsandbytes NF4 4-bit quantization (CUDA-only), but can be converted for local Apple Silicon inference via MLX. The conversion pipeline:
+
+```
+1. Load Qwen3-0.6B in float16 (not quantized)
+2. Apply LoRA adapter weights (stored in float16)
+3. merge_and_unload() → standard HuggingFace float16 model
+4. mlx_lm.convert → MLX format (optionally 4-bit quantized)
+```
+
+The key insight: LoRA delta weights are always stored in float16, independent of the base model's quantization during training. Merging into an fp16 base avoids the known issues with `merge_and_unload()` on NF4 quantized models (rounding errors, crashes).
+
+### MLX Architecture
+
+The MLX port (`mlx_model.py`) mirrors the PyTorch `HybridQwen` exactly:
+
+- **Whisper encoder**: via `mlx-whisper` library, with fine-tuned top-4 layers loaded from `projector.pt`
+- **Conv1d + projector**: Custom `mlx.nn` module. Note: MLX Conv1d uses channels-last format `(batch, seq, channels)` — no transposes needed (unlike PyTorch). Weight conversion: PyTorch `(out, in, kernel)` → MLX `(out, kernel, in)`.
+- **Qwen3 generation**: via `mlx_lm.load()` with KV cache. Custom greedy decode loop with brace-counting early stop (same as PyTorch version).
+
+### Latency (M3 Max, 4-bit quantized)
+
+| Stage | Time |
+|-------|------|
+| Whisper encoder + projector | ~130ms |
+| Qwen3 prefill (380 tokens) | ~100ms |
+| Qwen3 generation (~18 tokens) | ~220-350ms |
+| **Total** | **~370-685ms** |
+
+vs ~1.5-2s on Modal A10G (including network latency).
+
+---
 
 ## Infrastructure
 

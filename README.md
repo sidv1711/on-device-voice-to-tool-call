@@ -22,9 +22,21 @@ Try the model in your browser — record a voice command and see the JSON tool c
 
 **[Launch Demo](https://runanywhere--runanywhere-demo-demo-serve.modal.run)**
 
-The demo runs on a Modal A10G GPU. First load takes ~40s (cold start + model loading), then inference runs in ~1.5–2s per query. The E2E tool call result streams back immediately, followed by a Whisper ASR transcript for reference.
+The cloud demo runs on a Modal A10G GPU. First load takes ~40s (cold start), then inference runs in ~1.5–2s per query.
 
-### Deploy your own instance
+### Run locally on Apple Silicon (MLX)
+
+Run the demo on your Mac with no cloud dependency. Uses [MLX](https://github.com/ml-explore/mlx) for native Apple Silicon acceleration — **~400ms latency**, no GPU server needed.
+
+```bash
+pip install mlx mlx-lm mlx-whisper fastapi uvicorn librosa soundfile numpy python-multipart
+python demo_local.py --model-dir ./model_export --quantized
+# Open http://localhost:8000
+```
+
+Requires the MLX-converted model weights in `model_export/qwen3_mlx_4bit/` (see [MLX Conversion](#mlx-conversion-apple-silicon) below).
+
+### Deploy cloud instance (Modal)
 
 Requires a [Modal](https://modal.com) account and the trained model weights on the `hybrid-model-storage` volume.
 
@@ -39,13 +51,24 @@ modal serve demo.py
 modal deploy demo.py
 ```
 
-The demo auto-provisions an A10G GPU, loads model weights from the Modal volume, and serves a web UI. The container scales to zero when idle and wakes on the next request (~40s cold start).
+The cloud demo auto-provisions an A10G GPU, loads model weights from the Modal volume, and serves a web UI. The container scales to zero when idle and wakes on the next request (~40s cold start).
 
 ---
 
 ## Quick Start (Inference Only)
 
-Run the model on your own audio files. Requires a CUDA GPU with ~6GB VRAM.
+### Option A: Local Mac (Apple Silicon, recommended)
+
+No CUDA needed. Runs entirely on-device via MLX.
+
+```bash
+pip install mlx mlx-lm mlx-whisper librosa soundfile numpy
+python mlx_model.py path/to/audio.wav --model-dir ./model_export --quantized
+```
+
+### Option B: CUDA GPU
+
+Requires a CUDA GPU with ~6GB VRAM.
 
 ### 1. Install dependencies
 
@@ -212,7 +235,11 @@ git commit -m "Update model weights"
 ├── merge_on_modal.py              # Dataset merging (synthetic + STOP)
 ├── merge_stop.py                  # Alternative merge script
 │
-├── demo.py                        # Live demo: FastAPI + custom UI on Modal (modal deploy demo.py)
+├── demo.py                        # Cloud demo: FastAPI + UI on Modal GPU (modal deploy demo.py)
+├── demo_local.py                  # Local demo: FastAPI + UI on Apple Silicon (MLX)
+├── mlx_model.py                   # MLX port of HybridQwen for Apple Silicon inference
+├── merge_export.py                # Merge LoRA into base model for MLX conversion (Modal)
+│
 ├── download_model.py              # Download model weights from Modal
 ├── promote_checkpoint.py          # Convert training checkpoint to final format
 ├── asr_override.py                # ASR keyword override rules
@@ -274,6 +301,50 @@ Base models (auto-downloaded from HuggingFace):
 | **Ours** | **Whisper-small (39M)** | **77.6%** |
 
 7.7x smaller encoder, competitive or better accuracy.
+
+---
+
+## MLX Conversion (Apple Silicon)
+
+To run the model locally on a Mac, the LoRA weights must be merged into the base model and converted to MLX format. This is a one-time process.
+
+### Step 1: Merge LoRA into float16 base (requires Modal GPU)
+
+```bash
+modal run merge_export.py
+modal volume get hybrid-model-storage qwen3_merged_f16/ ./model_export/qwen3_merged_f16/
+```
+
+This loads Qwen3-0.6B in float16 (not quantized), applies the trained LoRA adapter, merges the weights, and saves as a standard HuggingFace model. The key insight: LoRA weights are stored in float16 regardless of training quantization, so merging into an fp16 base works correctly.
+
+### Step 2: Convert to MLX format
+
+```bash
+pip install mlx-lm
+
+# Float16 (1.1GB, slower inference)
+mlx_lm.convert --hf-path ./model_export/qwen3_merged_f16 --mlx-path ./model_export/qwen3_mlx
+
+# 4-bit quantized (400MB, ~3x faster inference, recommended)
+mlx_lm.convert --hf-path ./model_export/qwen3_merged_f16 --mlx-path ./model_export/qwen3_mlx_4bit --quantize --q-bits 4
+```
+
+### Step 3: Run locally
+
+```bash
+# CLI inference
+python mlx_model.py audio.wav --model-dir ./model_export --quantized
+
+# Web demo
+python demo_local.py --model-dir ./model_export --quantized
+```
+
+### Local Performance (M3 Max)
+
+| Config | Whisper + Projector | Qwen3 Generation | Total | Per Token |
+|--------|-------------------|-----------------|-------|-----------|
+| Float16 | ~130ms | 640-1000ms | 800-1500ms | ~50ms |
+| **4-bit** | **~130ms** | **220-350ms** | **370-685ms** | **~15ms** |
 
 ---
 
