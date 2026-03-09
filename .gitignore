@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# macOS
+.DS_Store
+
+# Data (too large — regenerate via scripts)
+data/
+
+# Model weights (large binaries — download via download_model.py)
+model/
+model_export/best_model_qwen3_finetuned/*.bin
+model_export/best_model_qwen3_finetuned/*.pt
+
+# Dev-only diagnostics
+asr_override_diagnostic.py
+
+# Claude Code config
+.claude/
+
+# Local/private config
+*.local.json
+.env
+.env.*
+
+# Tasks (session-specific tracking)
+tasks/

@@ -1,0 +1,10 @@
+gradio
+torch
+transformers
+peft
+bitsandbytes
+accelerate
+librosa
+soundfile
+numpy
+spaces
