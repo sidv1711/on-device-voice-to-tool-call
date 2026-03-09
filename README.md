@@ -24,6 +24,23 @@ Try the model in your browser — record a voice command and see the JSON tool c
 
 The demo runs on a Modal A10G GPU. First load takes ~40s (cold start + model loading), then inference runs in ~1.5–2s per query. The E2E tool call result streams back immediately, followed by a Whisper ASR transcript for reference.
 
+### Deploy your own instance
+
+Requires a [Modal](https://modal.com) account and the trained model weights on the `hybrid-model-storage` volume.
+
+```bash
+pip install modal
+modal setup  # one-time auth
+
+# Dev mode (hot reload, temporary URL)
+modal serve demo.py
+
+# Production (persistent URL)
+modal deploy demo.py
+```
+
+The demo auto-provisions an A10G GPU, loads model weights from the Modal volume, and serves a web UI. The container scales to zero when idle and wakes on the next request (~40s cold start).
+
 ---
 
 ## Quick Start (Inference Only)
