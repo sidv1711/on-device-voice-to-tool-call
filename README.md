@@ -16,6 +16,16 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.
 
 ---
 
+## Live Demo
+
+Try the model in your browser — record a voice command and see the JSON tool call output in real time.
+
+**[Launch Demo](https://runanywhere--runanywhere-demo-demo-serve.modal.run)**
+
+The demo runs on a Modal A10G GPU. First load takes ~40s (cold start + model loading), then inference runs in ~1.5–2s per query. The E2E tool call result streams back immediately, followed by a Whisper ASR transcript for reference.
+
+---
+
 ## Quick Start (Inference Only)
 
 Run the model on your own audio files. Requires a CUDA GPU with ~6GB VRAM.
@@ -185,8 +195,7 @@ modal volume get hybrid-model-storage best_model_qwen3_finetuned/ model_export/b
 ├── merge_on_modal.py              # Dataset merging (synthetic + STOP)
 ├── merge_stop.py                  # Alternative merge script
 │
-├── app.py                         # Gradio web demo
-├── demo.py                        # Modal-hosted live demo
+├── demo.py                        # Live demo: FastAPI + custom UI on Modal (modal deploy demo.py)
 ├── download_model.py              # Download model weights from Modal
 ├── promote_checkpoint.py          # Convert training checkpoint to final format
 ├── asr_override.py                # ASR keyword override rules
