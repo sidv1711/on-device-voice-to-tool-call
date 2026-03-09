@@ -10,7 +10,7 @@ Converts spoken audio into structured JSON function calls. 77.6% exact match on 
 pip install torch transformers accelerate peft bitsandbytes librosa soundfile
 ```
 
-Requires a CUDA GPU with ~6GB VRAM. Base models (~800MB) are downloaded automatically from HuggingFace on first run.
+Requires a CUDA GPU with ~6GB VRAM. Model weights (`adapter_model.bin`, `projector.pt`) are included via Git LFS. Base models (~800MB) are downloaded automatically from HuggingFace on first run.
 
 ## Usage
 

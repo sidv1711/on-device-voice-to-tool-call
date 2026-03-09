@@ -53,22 +53,18 @@ Run the model on your own audio files. Requires a CUDA GPU with ~6GB VRAM.
 pip install torch transformers accelerate peft bitsandbytes librosa soundfile
 ```
 
-### 2. Download model weights
+### 2. Get model weights
 
-The fine-tuned weights (~168MB) are stored on Modal volumes. Download them locally:
+The fine-tuned weights (~168MB) are included in the repo via Git LFS. They download automatically when you clone:
 
 ```bash
-pip install modal
-modal setup  # one-time auth
-
-# Download to model_export/best_model_qwen3_finetuned/
-mkdir -p model_export/best_model_qwen3_finetuned
-modal volume get hybrid-model-storage best_model_qwen3_finetuned/ model_export/best_model_qwen3_finetuned/
+git lfs install  # one-time setup
+git clone git@github.com:RunanywhereAI/voice-to-tool-call.git
 ```
 
-Or use the helper script:
+If you already cloned without LFS, pull the weights:
 ```bash
-python download_model.py
+git lfs pull
 ```
 
 Base models (~800MB total) are downloaded automatically from HuggingFace on first run:
@@ -170,13 +166,17 @@ modal run --detach error_analysis.py --slurp-only       # SLURP subset only
 modal run --detach error_analysis.py --max-samples 100  # quick spot check
 ```
 
-### Step 7: Download trained weights
+### Step 7: Export trained weights
+
+Weights are already committed to the repo via Git LFS. To update them from a new training run:
 
 ```bash
 python download_model.py
 # or manually:
 mkdir -p model_export/best_model_qwen3_finetuned
 modal volume get hybrid-model-storage best_model_qwen3_finetuned/ model_export/best_model_qwen3_finetuned/
+git add model_export/best_model_qwen3_finetuned/*.bin model_export/best_model_qwen3_finetuned/*.pt
+git commit -m "Update model weights"
 ```
 
 ---
@@ -193,8 +193,8 @@ modal volume get hybrid-model-storage best_model_qwen3_finetuned/ model_export/b
 │   ├── inference.py               # Standalone inference script
 │   ├── README.md                  # Quick-start for inference only
 │   └── best_model_qwen3_finetuned/
-│       ├── adapter_model.bin      # LoRA weights (35MB) [not in git]
-│       ├── projector.pt           # Audio projector (133MB) [not in git]
+│       ├── adapter_model.bin      # LoRA weights (35MB) [Git LFS]
+│       ├── projector.pt           # Audio projector (133MB) [Git LFS]
 │       ├── config.json            # Model config + function list
 │       └── adapter_config.json    # LoRA config
 │
