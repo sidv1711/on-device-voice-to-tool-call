@@ -18,7 +18,9 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.
 
 ## Live Demo
 
-Try the model in your browser — record a voice command and see the JSON tool call output in real time.
+**[Watch Demo Video](https://www.loom.com/share/e7580c229c61407e9ada2e1c3a35eeb3)** — see the model in action converting speech to JSON tool calls in real time.
+
+Try it yourself in the browser:
 
 **[Launch Demo](https://runanywhere--runanywhere-demo-demo-serve.modal.run)**
 
